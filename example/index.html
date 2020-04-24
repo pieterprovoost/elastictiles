@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+<head>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css" />
+<style>
+    #map, html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0px;
+    }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.vectorgrid@latest/dist/Leaflet.VectorGrid.bundled.js"></script>
+<script>
+
+    const map = L.map("map").setView([52, 2], 6);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}").addTo(map);
+
+    L.vectorGrid.protobuf("/tile/polygon/3/{z}/{x}/{y}.mvt", {
+        vectorTileLayerStyles: {
+            grid: function(properties) {
+                return {
+                    weight: 1,
+                    fillColor: "#336699",
+                    color: "#336699",
+                    fillOpacity: 0.05,
+                    fill: true
+                }
+            }
+        }
+    }).addTo(map);
+
+    L.vectorGrid.protobuf("/tile/polygon/4/{z}/{x}/{y}.mvt", {
+        vectorTileLayerStyles: {
+            grid: function(properties) {
+                return {
+                    weight: 0,
+                    fillColor: "#6ebd00",
+                    fillOpacity: 0.3,
+                    fill: true,
+                    radius: 2
+                }
+            }
+        }
+    }).addTo(map);
+
+    L.vectorGrid.protobuf("/tile/point/6/{z}/{x}/{y}.mvt", {
+        vectorTileLayerStyles: {
+            grid: function(properties) {
+                return {
+                    weight: 1,
+                    fillColor: "#cc3300",
+                    color: "#cc3300",
+                    fillOpacity: 0,
+                    fill: true,
+                    radius: 1.5
+                }
+            }
+        }
+    }).addTo(map);
+
+</script>
+</body>
+</html>
