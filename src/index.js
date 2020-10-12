@@ -59,7 +59,7 @@ class ElasticTile {
      * @param lat - Latitude.
      */
     coordsToPixels(lon, lat) {
-        const fraction = globalMercator.pointToTileFraction([lon, lat], this.xyz[2]);
+        const fraction = globalMercator.pointToTileFraction([lon, lat], this.xyz[2], false);
         const x = Math.floor((fraction[0] - this.xyz[0]) * tileSize);
         const y = Math.floor((fraction[1] - this.xyz[1]) * tileSize);
         return [ x, y ];
@@ -74,7 +74,7 @@ class ElasticTile {
     makeTile(buckets, layerName = "grid") {
         let props = [];
         if (buckets.length > 0) {
-            props = Object.keys(buckets[0]);
+            props = Object.keys(buckets[0]).filter(key => key !== "key");
         }
         let t = new VectorTile();
         let layer = new Layer(layerName);
@@ -88,6 +88,7 @@ class ElasticTile {
 
             let hash = bucket.key;
             let [ minLat, minLon, maxLat, maxLon ] = ngeohash.decode_bbox(hash);
+
             if (self.type === "point") {
                 let center = self.coordsToPixels((minLon + maxLon) / 2, (minLat + maxLat) / 2);
                 feature = new PointFeature();
@@ -120,6 +121,7 @@ class ElasticTile {
 
             layer.addFeature(feature);
         });
+
         return t.generateBuffer();
     }
 }

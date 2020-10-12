@@ -1,32 +1,12 @@
 const express = require("express");
 const axios = require("axios");
-const tile = require("../src");
 const { Client } = require("@elastic/elasticsearch");
+const cors = require("cors");
+const tile = require("../src");
 const client = new Client({ node: "http://localhost:9200" });
 
-const port = 2000;
-
-function random() {
-    let r = 0;
-    for (let i = 0; i < 10; i++) {
-        r += Math.random();
-    }
-    return r / 10 - 0.5;
-};
-
-async function makeCluster(lon, lat, n) {
-    for (let i = 1; i < n; i++) {
-        await client.index({
-            index: "points",
-            body: {
-                "location": {
-                    "lat": lat + random() * 10.0,
-                    "lon": lon + random() * 10.0
-                }
-            }
-        });
-    };
-};
+const PORT = 2000;
+const ES_SEARCH = "http://localhost:9200/points/_search";
 
 async function populate() {
     const res = await client.indices.exists( { index: "points" });
@@ -51,20 +31,27 @@ async function populate() {
             }
         }
     });
-    await makeCluster(-1, 50, 100);
-    await makeCluster(3, 52, 300);
-    await makeCluster(5, 54, 50);
+    for (let i = 0; i < 10000; i++) {
+        await client.index({
+            index: "points",
+            body: {
+                "location": {
+                    "lat": -90 + Math.random() * 180,
+                    "lon": -180 + Math.random() * 360
+                }
+            }
+        });
+    }
     console.log("Finished populating Elasticsearch");
 };
 
 populate();
-
 const app = express();
-app.use(express.static("public"));
+app.use(cors());
 
 app.get("/tile/:type/:precision/:z/:x/:y.mvt", async function(req, res) {
     const xyz = [ parseInt(req.params.x), parseInt(req.params.y), parseInt(req.params.z) ];
-    const margin = 2;
+    const margin = 0;
     const t = new tile.ElasticTile(xyz, req.params.precision, req.params.type, margin);
     const [ minLon, minLat, maxLon, maxLat ] = t.envelope;
     const body = {
@@ -94,13 +81,13 @@ app.get("/tile/:type/:precision/:z/:x/:y.mvt", async function(req, res) {
             }
         }
     };
-    const result = await axios.post("http://localhost:9200/points/_search", body);
+    const result = await axios.post(ES_SEARCH, body);
     const buckets = result.data.aggregations.grid.buckets;
     res.end(t.makeTile(buckets));
 });
 
-app.get("/", function(req, res) {
-    res.sendFile(__dirname + "/index.html");
+app.get("/:filename", function(req, res) {
+    res.sendFile(__dirname + "/" + req.params.filename);
 });
 
-app.listen(port, () => console.log(`Demo app listening on port ${port}!`));
+app.listen(PORT, () => console.log(`Demo app listening on port ${PORT}!`));

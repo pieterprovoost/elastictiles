@@ -1,66 +1,74 @@
 <!doctype html>
 <html>
 <head>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css" />
-<style>
-    #map, html, body {
-        width: 100%;
-        height: 100%;
-        margin: 0px;
-    }
-</style>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v1.11.0/mapbox-gl.css" rel="stylesheet" />
+    <style>
+        * {
+            outline: none;
+        }
+        #map, html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0px;
+        }
+    </style>
 </head>
 <body>
 <div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.vectorgrid@latest/dist/Leaflet.VectorGrid.bundled.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v1.11.0/mapbox-gl.js"></script>
 <script>
 
-    const map = L.map("map").setView([52, 2], 6);
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}").addTo(map);
+    const map = new mapboxgl.Map({
+        container: "map",
+        zoom: 2,
+        center: [30, 30]
+    });
 
-    L.vectorGrid.protobuf("/tile/polygon/3/{z}/{x}/{y}.mvt", {
-        vectorTileLayerStyles: {
-            grid: function(properties) {
-                return {
-                    weight: 1,
-                    fillColor: "#336699",
-                    color: "#336699",
-                    fillOpacity: 0.05,
-                    fill: true
-                }
-            }
-        }
-    }).addTo(map);
+    map.addSource("polygon", {
+        "type": "vector",
+        "tiles": [ "http://localhost:2000/tile/polygon/3/{z}/{x}/{y}.mvt" ]
+    });
+    map.addSource("point", {
+        "type": "vector",
+        "tiles": [ "http://localhost:2000/tile/point/6/{z}/{x}/{y}.mvt" ]
+    });
+    map.addSource("base", {
+        "type": "raster",
+        "tiles": [
+            "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+        ],
+        "tileSize": 256
+    });
 
-    L.vectorGrid.protobuf("/tile/polygon/4/{z}/{x}/{y}.mvt", {
-        vectorTileLayerStyles: {
-            grid: function(properties) {
-                return {
-                    weight: 0,
-                    fillColor: "#6ebd00",
-                    fillOpacity: 0.3,
-                    fill: true,
-                    radius: 2
-                }
-            }
+    map.addLayer({
+        "id": "base",
+        "type": "raster",
+        "source": "base"
+    });
+    map.addLayer({
+        "id": "polygon",
+        "type": "fill",
+        "source": "polygon",
+        "source-layer": "grid",
+        "paint": {
+            "fill-color": {
+                property: "doc_count",
+                stops: [[0, "#ff0000"], [3, "#0000ff"]]
+            },
+            "fill-opacity": 0.2
         }
-    }).addTo(map);
-
-    L.vectorGrid.protobuf("/tile/point/6/{z}/{x}/{y}.mvt", {
-        vectorTileLayerStyles: {
-            grid: function(properties) {
-                return {
-                    weight: 1,
-                    fillColor: "#cc3300",
-                    color: "#cc3300",
-                    fillOpacity: 0,
-                    fill: true,
-                    radius: 1.5
-                }
-            }
+    });
+    map.addLayer({
+        "id": "point",
+        "type": "circle",
+        "source": "point",
+        "source-layer": "grid",
+        "paint": {
+            "circle-color": "#000000",
+            "circle-radius": 2,
+            "circle-opacity": 0.3
         }
-    }).addTo(map);
+    });
 
 </script>
 </body>
