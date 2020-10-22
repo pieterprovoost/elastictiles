@@ -6,13 +6,21 @@ const tile = require("../src");
 const client = new Client({ node: "http://localhost:9200" });
 
 const PORT = 2000;
-const ES_SEARCH = "http://localhost:9200/points/_search";
+const ES_SEARCH_URL = "http://localhost:9200/points/_search";
+const N_POINTS = 100000;
 
 async function populate() {
     const res = await client.indices.exists( { index: "points" });
     if (!res.body) {
         await client.indices.create( { index: "points" });
     }
+    await client.cluster.putSettings({
+        body: {
+            "transient": {
+                "search.max_buckets": N_POINTS * 10
+            }
+        }
+    });
     await client.deleteByQuery({
         index: "points",
         body: {
@@ -31,7 +39,7 @@ async function populate() {
             }
         }
     });
-    for (let i = 0; i < 10000; i++) {
+    for (let i = 0; i < N_POINTS; i++) {
         await client.index({
             index: "points",
             body: {
@@ -61,6 +69,7 @@ app.get("/tile/:type/:precision/:z/:x/:y.mvt", async function(req, res) {
             "grid": {
                 "geohash_grid" : {
                     "field": "location",
+                    "size": N_POINTS * 10,
                     "precision": req.params.precision
                 }
             }
@@ -81,7 +90,7 @@ app.get("/tile/:type/:precision/:z/:x/:y.mvt", async function(req, res) {
             }
         }
     };
-    const result = await axios.post(ES_SEARCH, body);
+    const result = await axios.post(ES_SEARCH_URL, body);
     const buckets = result.data.aggregations.grid.buckets;
     res.end(t.makeTile(buckets));
 });
