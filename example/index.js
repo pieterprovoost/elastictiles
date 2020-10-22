@@ -1,13 +1,14 @@
 const express = require("express");
-const axios = require("axios");
 const { Client } = require("@elastic/elasticsearch");
 const cors = require("cors");
 const tile = require("../src");
-const client = new Client({ node: "http://localhost:9200" });
 
 const PORT = 2000;
-const ES_SEARCH_URL = "http://localhost:9200/points/_search";
 const N_POINTS = 100000;
+const ES_ENDPOINT = "http://localhost:9200";
+const POPULATE = true;
+
+const client = new Client({ node: ES_ENDPOINT });
 
 async function populate() {
     const res = await client.indices.exists( { index: "points" });
@@ -53,7 +54,7 @@ async function populate() {
     console.log("Finished populating Elasticsearch");
 };
 
-populate();
+if (POPULATE) populate();
 const app = express();
 app.use(cors());
 
@@ -62,37 +63,40 @@ app.get("/tile/:type/:precision/:z/:x/:y.mvt", async function(req, res) {
     const margin = 0;
     const t = new tile.ElasticTile(xyz, req.params.precision, req.params.type, margin);
     const [ minLon, minLat, maxLon, maxLat ] = t.envelope;
-    const body = {
-        "size": 0,
-        "_source": "location",
-        "aggregations": {
-            "grid": {
-                "geohash_grid" : {
-                    "field": "location",
-                    "size": N_POINTS * 10,
-                    "precision": req.params.precision
+
+    const { body } = await client.search({
+        index: "points",
+        body: {
+            "size": 0,
+            "_source": "location",
+            "aggregations": {
+                "grid": {
+                    "geohash_grid" : {
+                        "field": "location",
+                        "size": N_POINTS * 10,
+                        "precision": req.params.precision
+                    }
                 }
-            }
-        },
-        "query": {
-            "bool": {
-                "must" : {
-                    "match_all" : {}
-                },
-                "filter": {
-                    "geo_bounding_box": {
-                        "location": {
-                            "top_left": [ minLon, maxLat ],
-                            "bottom_right": [ maxLon, minLat ]
+            },
+            "query": {
+                "bool": {
+                    "must" : {
+                        "match_all" : {}
+                    },
+                    "filter": {
+                        "geo_bounding_box": {
+                            "location": {
+                                "top_left": [ minLon, maxLat ],
+                                "bottom_right": [ maxLon, minLat ]
+                            }
                         }
                     }
                 }
             }
         }
-    };
-    const result = await axios.post(ES_SEARCH_URL, body);
-    const buckets = result.data.aggregations.grid.buckets;
-    res.end(t.makeTile(buckets));
+    });
+
+    res.end(t.makeTile(body.aggregations.grid.buckets));
 });
 
 app.get("/:filename", function(req, res) {

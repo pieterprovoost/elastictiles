@@ -1,7 +1,7 @@
 {
   "name": "elastictiles",
-  "version": "0.1.1",
-  "description": "Vector tiles from Elasticsearch geohash grids",
+  "version": "0.1.2",
+  "description": "Mapbox Vector Tiles from Elasticsearch geohash grids",
   "scripts": {
     "test": "./node_modules/.bin/istanbul cover ./node_modules/.bin/mocha test/*.spec.js",
     "example": "nodemon --watch example --watch src -e js,html example/index.js"
