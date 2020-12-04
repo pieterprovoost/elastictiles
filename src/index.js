@@ -71,10 +71,14 @@ class ElasticTile {
      * @param buckets - Elasticsearch geohash grid aggregation buckets.
      * @param layerName - Layer name.
      */
-    makeTile(buckets, layerName = "grid") {
+    makeTile(buckets, layerName = "grid", keepKeys = false) {
         let props = [];
         if (buckets.length > 0) {
-            props = Object.keys(buckets[0]).filter(key => key !== "key");
+            if (keepKeys) {
+                props = Object.keys(buckets[0]);
+            } else {
+                props = Object.keys(buckets[0]).filter(key => key !== "key");
+            }
         }
         let t = new VectorTile();
         let layer = new Layer(layerName);
