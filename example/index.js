@@ -4,7 +4,7 @@ const cors = require("cors");
 const tile = require("../src");
 
 const PORT = 2000;
-const N_POINTS = 100000;
+const N_POINTS = 10000;
 const ES_ENDPOINT = "http://localhost:9200";
 const POPULATE = true;
 
@@ -61,7 +61,7 @@ app.use(cors());
 app.get("/tile/:type/:precision/:z/:x/:y.mvt", async function(req, res) {
     const xyz = [ parseInt(req.params.x), parseInt(req.params.y), parseInt(req.params.z) ];
     const margin = 0;
-    const t = new tile.ElasticTile(xyz, req.params.precision, req.params.type, margin);
+    const t = new tile.ElasticTile(xyz, req.params.precision, req.params.type, margin, "geotile");
     const [ minLon, minLat, maxLon, maxLat ] = t.envelope;
 
     const { body } = await client.search({
@@ -71,7 +71,7 @@ app.get("/tile/:type/:precision/:z/:x/:y.mvt", async function(req, res) {
             "_source": "location",
             "aggregations": {
                 "grid": {
-                    "geohash_grid" : {
+                    "geotile_grid" : {
                         "field": "location",
                         "size": N_POINTS * 10,
                         "precision": req.params.precision

@@ -23,14 +23,13 @@
         zoom: 0,
         center: [30, 30]
     });
-
     map.addSource("polygon", {
         "type": "vector",
-        "tiles": [ "http://localhost:2000/tile/polygon/3/{z}/{x}/{y}.mvt" ]
+        "tiles": [ "http://localhost:2000/tile/polygon/6/{z}/{x}/{y}.mvt" ]
     });
     map.addSource("point", {
         "type": "vector",
-        "tiles": [ "http://localhost:2000/tile/point/6/{z}/{x}/{y}.mvt" ]
+        "tiles": [ "http://localhost:2000/tile/point/12/{z}/{x}/{y}.mvt" ]
     });
     map.addSource("base", {
         "type": "raster",

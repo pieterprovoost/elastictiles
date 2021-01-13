@@ -25,31 +25,37 @@ class ElasticTile {
      *
      * @constructor
      * @param xyz - Tile x, y, and zoom as an array.
-     * @param precision - Geohash precision.
-     * @param margin - Margin around the tile in geohash grid cells.
+     * @param precision - Geohash or geotile precision.
+     * @param grid - Geohash or geotile grid aggregation. `geohash` (default) or `geogrid`.
+     * @param margin - Margin around the tile in geohash grid cells (currently only for geohash).
      */
-    constructor(xyz, precision, type = "point", margin = 0) {
+    constructor(xyz, precision, type = "point", margin = 0, grid = "geohash") {
         this.xyz = xyz;
         this.precision = precision;
         this.type = type;
+        this.grid = grid;
         this.margin = margin;
         this.bbox = globalMercator.googleToBBox(xyz);
         this.calculateEnvelope(xyz);
     }
 
     /**
-     * Calculates the envelope around a tile based on the bounding box, geohash precision,
-     * and margin.
+     * Calculates the envelope around a tile based on the bounding box, precision, and margin.
      */
     calculateEnvelope() {
-        const [ minLon, minLat, maxLon, maxLat ] = this.bbox;
-        const topLeft = ngeohash.encode(maxLat, minLon, this.precision);
-        const bottomRight = ngeohash.encode(minLat, maxLon, this.precision);
-        const topLeftMargin = ngeohash.neighbor(topLeft, [this.margin, -this.margin]);
-        const bottomRightMargin = ngeohash.neighbor(bottomRight, [-this.margin, this.margin]);
-        const [ , minLon2, maxLat2, ] = ngeohash.decode_bbox(topLeftMargin);
-        const [ minLat2, , , maxLon2 ] = ngeohash.decode_bbox(bottomRightMargin);
-        this.envelope = [ minLon2, minLat2, maxLon2, maxLat2 ];
+        if (this.grid === "geohash") {
+            const [ minLon, minLat, maxLon, maxLat ] = this.bbox;
+            const topLeft = ngeohash.encode(maxLat, minLon, this.precision);
+            const bottomRight = ngeohash.encode(minLat, maxLon, this.precision);
+            const topLeftMargin = ngeohash.neighbor(topLeft, [this.margin, -this.margin]);
+            const bottomRightMargin = ngeohash.neighbor(bottomRight, [-this.margin, this.margin]);
+            const [ , minLon2, maxLat2, ] = ngeohash.decode_bbox(topLeftMargin);
+            const [ minLat2, , , maxLon2 ] = ngeohash.decode_bbox(bottomRightMargin);
+            this.envelope = [ minLon2, minLat2, maxLon2, maxLat2 ];
+        } else {
+            // todo: calculate for geogrid
+            this.envelope = this.bbox;
+        }
     };
 
     /**
@@ -68,7 +74,7 @@ class ElasticTile {
     /**
      * Generates a vector tile from Elasticsearch buckets.
      *
-     * @param buckets - Elasticsearch geohash grid aggregation buckets.
+     * @param buckets - Elasticsearch grid aggregation buckets.
      * @param layerName - Layer name.
      */
     makeTile(buckets, layerName = "grid", keepKeys = false) {
@@ -90,8 +96,14 @@ class ElasticTile {
 
             // geometry
 
-            let hash = bucket.key;
-            let [ minLat, minLon, maxLat, maxLon ] = ngeohash.decode_bbox(hash);
+            const hash = bucket.key;
+            let minLat, minLon, maxLat, maxLon;
+            if (self.grid === "geohash") {
+                [ minLat, minLon, maxLat, maxLon ] = ngeohash.decode_bbox(hash);
+            } else {
+                const [z, x, y] = hash.split("/");
+                [ minLon, minLat, maxLon, maxLat ] = globalMercator.googleToBBox([parseInt(x), parseInt(y), parseInt(z)]);
+            }
 
             if (self.type === "point") {
                 let center = self.coordsToPixels((minLon + maxLon) / 2, (minLat + maxLat) / 2);
